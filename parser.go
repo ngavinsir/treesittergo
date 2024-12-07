@@ -2,155 +2,64 @@ package treesittergo
 
 import (
 	"context"
-	_ "embed"
-	"log"
-
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/emscripten"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"fmt"
 )
 
-//go:embed ts-combined-sql.wasm
-var tsWasm []byte
-
 type Parser struct {
-	m          api.Module
-	p          uint64
-	Runtime    wazero.Runtime
-	WASMModule api.Module
+	t Treesitter
+	p uint64
 }
 
-// Create a new parser.
-func NewParser() *Parser {
-	return NewParserCtx(context.Background())
+func (t Treesitter) NewParser(ctx context.Context) (Parser, error) {
+	p, err := t.parserNew.Call(ctx)
+	if err != nil {
+		return Parser{}, fmt.Errorf("creating parser: %w", err)
+	}
+
+	return Parser{
+		t: t,
+		p: p[0],
+	}, nil
 }
 
-func NewParserCtx(ctx context.Context) *Parser {
-	r := wazero.NewRuntime(ctx)
-
-	wasi_snapshot_preview1.MustInstantiate(ctx, r)
-
-	compiled, err := r.CompileModule(ctx, tsWasm)
+func (p Parser) Close(ctx context.Context) error {
+	_, err := p.t.parserDelete.Call(ctx, p.p)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("closing parser: %w", err)
 	}
-
-	_, err = emscripten.InstantiateForModule(ctx, r, compiled)
-	if err != nil {
-		panic(err)
-	}
-
-	mod, err := r.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().WithName("ts"))
-	if err != nil {
-		panic(err)
-	}
-
-	newParser := mod.ExportedFunction("ts_parser_new")
-	p, err := newParser.Call(ctx)
-	if err != nil {
-		panic(err)
-	}
-
-	return &Parser{
-		m:          mod,
-		p:          p[0],
-		Runtime:    r,
-		WASMModule: mod,
-	}
-}
-
-func (p *Parser) Close() {
-	p.CloseCtx(context.Background())
-}
-
-func (p *Parser) Delete() {
-	delete := p.WASMModule.ExportedFunction("ts_parser_delete")
-	_, err := delete.Call(context.Background(), p.p)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (p *Parser) CloseCtx(ctx context.Context) {
-	deleteParser := p.m.ExportedFunction("ts_parser_delete")
-	_, err := deleteParser.Call(ctx, p.p)
-	if err != nil {
-		panic(err)
-	}
-	p.Runtime.Close(ctx)
-}
-
-func (p *Parser) SetLanguageCtx(ctx context.Context, l *Language) error {
-	setLanguage := p.m.ExportedFunction("ts_parser_set_language")
-	ok, err := setLanguage.Call(ctx, p.p, l.l)
-	if err != nil {
-		panic(err)
-	}
-	if ok[0] == 0 {
-		v, err := p.GetLanguageVersionCtx(ctx, l)
-		if err != nil {
-			panic(err)
-		}
-		return LanguageError{v}
-	}
-
 	return nil
 }
 
-func (p *Parser) GetLanguageVersionCtx(ctx context.Context, l *Language) (uint64, error) {
-	languageVersion := p.m.ExportedFunction("ts_language_version")
-	v, err := languageVersion.Call(ctx, l.l)
+func (p Parser) SetLanguage(ctx context.Context, l Language) error {
+	ok, err := p.t.parserSetLanguage.Call(ctx, p.p, l.l)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("setting language: %w", err)
+	}
+	if ok[0] == 0 {
+		v, err := p.GetLanguageVersion(ctx, l)
+		if err != nil {
+			return err
+		}
+		return LanguageError{v}
+	}
+	return nil
+}
+
+func (p Parser) GetLanguageVersion(ctx context.Context, l Language) (uint64, error) {
+	v, err := p.t.languageVersion.Call(ctx, l.l)
+	if err != nil {
+		return 0, fmt.Errorf("getting language version: %w", err)
 	}
 	return v[0], nil
 }
 
-func (p *Parser) ParseStringCtx(ctx context.Context, str string) (*Tree, error) {
-	malloc := p.m.ExportedFunction("malloc")
-	free := p.m.ExportedFunction("free")
-	parseString := p.m.ExportedFunction("ts_parser_parse_string")
+func (p Parser) ParseString(ctx context.Context, str string) (Tree, error) {
+	strPtr, strSize, freeStr, err := p.t.allocateString(ctx, str)
+	defer freeStr()
 
-	strByte := []byte(str)
-	strSize := uint64(len(strByte))
-	strPtr, err := malloc.Call(ctx, strSize)
+	tree, err := p.t.parserParseString.Call(ctx, p.p, uint64(0), strPtr, strSize)
 	if err != nil {
-		return nil, err
+		return Tree{}, fmt.Errorf("calling ts_parser_parse_string: %w", err)
 	}
-	defer free.Call(ctx, strPtr[0])
-
-	if !p.m.Memory().Write(uint32(strPtr[0]), strByte) {
-		log.Panicf("Memory.Write(%d, %d) out of range of memory size %d",
-			strPtr[0], strSize, p.m.Memory().Size())
-	}
-
-	tree, err := parseString.Call(ctx, p.p, uint64(0), strPtr[0], strSize)
-	if err != nil {
-		panic(err)
-	}
-	return newTree(tree[0], p.m), nil
+	return newTree(p.t, tree[0]), nil
 }
-
-// func main() {
-// 	log.Printf("exported functions: %+v\n", mod.ExportedFunctionDefinitions())
-//
-// 	parserTimeoutMicros := mod.ExportedFunction("ts_parser_timeout_micros")
-// 	t, err := parserTimeoutMicros.Call(ctx, p[0])
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Printf("t: %+v\n", t)
-//
-// 	setParserTimeoutMicros := mod.ExportedFunction("ts_parser_set_timeout_micros")
-// 	_, err = setParserTimeoutMicros.Call(ctx, p[0], uint64(1232))
-// 	if err != nil {
-// 		panic(err)
-// 	}
-//
-// 	t, err = parserTimeoutMicros.Call(ctx, p[0])
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Printf("t2: %+v\n", t)
-// }

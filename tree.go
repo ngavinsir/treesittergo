@@ -2,32 +2,28 @@ package treesittergo
 
 import (
 	"context"
-
-	"github.com/tetratelabs/wazero/api"
+	"fmt"
 )
 
 type Tree struct {
-	t uint64
-	m api.Module
+	ts Treesitter
+	t  uint64
 }
 
-// Create a new tree from a raw pointer.
-func newTree(t uint64, m api.Module) *Tree {
-	return &Tree{t, m}
+func newTree(ts Treesitter, t uint64) Tree {
+	return Tree{ts, t}
 }
 
-func (t *Tree) RootNodeCtx(ctx context.Context) *Node {
+func (t Tree) RootNode(ctx context.Context) (Node, error) {
 	// allocate tsnode 24 bytes
-	malloc := t.m.ExportedFunction("malloc")
-	nodePtr, err := malloc.Call(ctx, uint64(24))
+	nodePtr, err := t.ts.malloc.Call(ctx, uint64(24))
 	if err != nil {
-		panic(err)
+		return Node{}, fmt.Errorf("allocating node: %w", err)
 	}
 
-	treeRootNode := t.m.ExportedFunction("ts_tree_root_node")
-	_, err = treeRootNode.Call(ctx, nodePtr[0], t.t)
+	_, err = t.ts.treeRootNode.Call(ctx, nodePtr[0], t.t)
 	if err != nil {
-		panic(err)
+		return Node{}, fmt.Errorf("getting tree root node: %w", err)
 	}
-	return newNode(nodePtr[0], t.m)
+	return newNode(t.ts, nodePtr[0]), nil
 }
