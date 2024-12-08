@@ -43,6 +43,18 @@ func (n Node) Child(ctx context.Context, index uint64) (Node, error) {
 	return newNode(n.t, nodePtr), nil
 }
 
+func (n Node) NamedChild(ctx context.Context, index uint64) (Node, error) {
+	nodePtr, err := n.t.allocateNode(ctx)
+	if err != nil {
+		return Node{}, err
+	}
+	_, err = n.t.nodeNamedChild.Call(ctx, nodePtr, n.n, index)
+	if err != nil {
+		return Node{}, fmt.Errorf("getting node child: %w", err)
+	}
+	return newNode(n.t, nodePtr), nil
+}
+
 func (n Node) StartByte(ctx context.Context) (uint64, error) {
 	res, err := n.t.nodeStartByte.Call(ctx, n.n)
 	if err != nil {
@@ -60,6 +72,14 @@ func (n Node) EndByte(ctx context.Context) (uint64, error) {
 }
 
 func (n Node) ChildCount(ctx context.Context) (uint64, error) {
+	res, err := n.t.nodeChildCount.Call(ctx, n.n)
+	if err != nil {
+		return 0, fmt.Errorf("getting node child count: %w", err)
+	}
+	return res[0], nil
+}
+
+func (n Node) NamedChildCount(ctx context.Context) (uint64, error) {
 	res, err := n.t.nodeChildCount.Call(ctx, n.n)
 	if err != nil {
 		return 0, fmt.Errorf("getting node child count: %w", err)

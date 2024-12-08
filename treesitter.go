@@ -38,12 +38,14 @@ type Treesitter struct {
 	queryCursorNextMatch  api.Function
 	queryCaptureNameForID api.Function
 
-	nodeString     api.Function
-	nodeChildCount api.Function
-	nodeChild      api.Function
-	nodeType       api.Function
-	nodeEndByte    api.Function
-	nodeStartByte  api.Function
+	nodeString          api.Function
+	nodeChildCount      api.Function
+	nodeNamedChildCount api.Function
+	nodeChild           api.Function
+	nodeNamedChild      api.Function
+	nodeType            api.Function
+	nodeEndByte         api.Function
+	nodeStartByte       api.Function
 
 	languageSQL api.Function
 }
@@ -87,7 +89,9 @@ func New(ctx context.Context) (Treesitter, error) {
 		treeRootNode:          mod.ExportedFunction("ts_tree_root_node"),
 		nodeString:            mod.ExportedFunction("ts_node_string"),
 		nodeChildCount:        mod.ExportedFunction("ts_node_child_count"),
+		nodeNamedChildCount:   mod.ExportedFunction("ts_node_named_child_count"),
 		nodeChild:             mod.ExportedFunction("ts_node_child"),
+		nodeNamedChild:        mod.ExportedFunction("ts_node_named_child"),
 		nodeType:              mod.ExportedFunction("ts_node_type"),
 		nodeStartByte:         mod.ExportedFunction("ts_node_start_byte"),
 		nodeEndByte:           mod.ExportedFunction("ts_node_end_byte"),
