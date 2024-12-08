@@ -55,6 +55,14 @@ func (n Node) NamedChild(ctx context.Context, index uint64) (Node, error) {
 	return newNode(n.t, nodePtr), nil
 }
 
+func (n Node) IsError(ctx context.Context) (bool, error) {
+	res, err := n.t.nodeIsError.Call(ctx, n.n)
+	if err != nil {
+		return false, fmt.Errorf("getting node is error: %w", err)
+	}
+	return res[0] == 1, nil
+}
+
 func (n Node) StartByte(ctx context.Context) (uint64, error) {
 	res, err := n.t.nodeStartByte.Call(ctx, n.n)
 	if err != nil {

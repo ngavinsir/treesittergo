@@ -46,6 +46,7 @@ type Treesitter struct {
 	nodeType            api.Function
 	nodeEndByte         api.Function
 	nodeStartByte       api.Function
+	nodeIsError         api.Function
 
 	languageSQL api.Function
 }
@@ -95,6 +96,7 @@ func New(ctx context.Context) (Treesitter, error) {
 		nodeType:              mod.ExportedFunction("ts_node_type"),
 		nodeStartByte:         mod.ExportedFunction("ts_node_start_byte"),
 		nodeEndByte:           mod.ExportedFunction("ts_node_end_byte"),
+		nodeIsError:           mod.ExportedFunction("ts_node_is_error"),
 		languageSQL:           mod.ExportedFunction("tree_sitter_sql"),
 	}, nil
 }
