@@ -35,7 +35,7 @@ func NewNamedIterator(n Node, mode IterMode) Iterator {
 	}
 }
 
-func (iter Iterator) Next(ctx context.Context) (Node, error) {
+func (iter *Iterator) Next(ctx context.Context) (Node, error) {
 	if len(iter.nodesToVisit) == 0 {
 		return Node{}, io.EOF
 	}
@@ -81,7 +81,7 @@ func (iter Iterator) Next(ctx context.Context) (Node, error) {
 	return n, nil
 }
 
-func (iter Iterator) ForEach(ctx context.Context, fn func(Node) error) error {
+func (iter *Iterator) ForEach(ctx context.Context, fn func(Node) error) error {
 	for {
 		n, err := iter.Next(ctx)
 		if err != nil {
