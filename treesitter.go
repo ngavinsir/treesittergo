@@ -32,12 +32,18 @@ type Treesitter struct {
 
 	treeRootNode api.Function
 
-	queryNew api.Function
+	queryNew              api.Function
+	queryCursorNew        api.Function
+	queryCusorExec        api.Function
+	queryCursorNextMatch  api.Function
+	queryCaptureNameForID api.Function
 
 	nodeString     api.Function
 	nodeChildCount api.Function
 	nodeChild      api.Function
 	nodeType       api.Function
+	nodeEndByte    api.Function
+	nodeStartByte  api.Function
 
 	languageSQL api.Function
 }
@@ -63,23 +69,29 @@ func New(ctx context.Context) (Treesitter, error) {
 	}
 
 	return Treesitter{
-		m:                 mod,
-		malloc:            mod.ExportedFunction("malloc"),
-		free:              mod.ExportedFunction("free"),
-		strlen:            mod.ExportedFunction("strlen"),
-		parserNew:         mod.ExportedFunction("ts_parser_new"),
-		parserParseString: mod.ExportedFunction("ts_parser_parse_string"),
-		parserSetLanguage: mod.ExportedFunction("ts_parser_set_language"),
-		parserDelete:      mod.ExportedFunction("ts_parser_delete"),
-		queryNew:          mod.ExportedFunction("ts_query_new"),
-		languageName:      mod.ExportedFunction("ts_language_name"),
-		languageVersion:   mod.ExportedFunction("ts_language_version"),
-		treeRootNode:      mod.ExportedFunction("ts_tree_root_node"),
-		nodeString:        mod.ExportedFunction("ts_node_string"),
-		nodeChildCount:    mod.ExportedFunction("ts_node_child_count"),
-		nodeChild:         mod.ExportedFunction("ts_node_child"),
-		nodeType:          mod.ExportedFunction("ts_node_type"),
-		languageSQL:       mod.ExportedFunction("tree_sitter_sql"),
+		m:                     mod,
+		malloc:                mod.ExportedFunction("malloc"),
+		free:                  mod.ExportedFunction("free"),
+		strlen:                mod.ExportedFunction("strlen"),
+		parserNew:             mod.ExportedFunction("ts_parser_new"),
+		parserParseString:     mod.ExportedFunction("ts_parser_parse_string"),
+		parserSetLanguage:     mod.ExportedFunction("ts_parser_set_language"),
+		parserDelete:          mod.ExportedFunction("ts_parser_delete"),
+		queryNew:              mod.ExportedFunction("ts_query_new"),
+		queryCursorNew:        mod.ExportedFunction("ts_query_cursor_new"),
+		queryCusorExec:        mod.ExportedFunction("ts_query_cursor_exec"),
+		queryCursorNextMatch:  mod.ExportedFunction("ts_query_cursor_next_match"),
+		queryCaptureNameForID: mod.ExportedFunction("ts_query_capture_name_for_id"),
+		languageName:          mod.ExportedFunction("ts_language_name"),
+		languageVersion:       mod.ExportedFunction("ts_language_version"),
+		treeRootNode:          mod.ExportedFunction("ts_tree_root_node"),
+		nodeString:            mod.ExportedFunction("ts_node_string"),
+		nodeChildCount:        mod.ExportedFunction("ts_node_child_count"),
+		nodeChild:             mod.ExportedFunction("ts_node_child"),
+		nodeType:              mod.ExportedFunction("ts_node_type"),
+		nodeStartByte:         mod.ExportedFunction("ts_node_start_byte"),
+		nodeEndByte:           mod.ExportedFunction("ts_node_end_byte"),
+		languageSQL:           mod.ExportedFunction("tree_sitter_sql"),
 	}, nil
 }
 
