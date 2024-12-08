@@ -14,7 +14,6 @@ const (
 )
 
 type Iterator struct {
-	t            Treesitter
 	named        bool
 	mode         IterMode
 	nodesToVisit []Node
